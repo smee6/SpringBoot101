@@ -247,7 +247,8 @@ Hello World
 ### 하나 더 <ThreadPool + CompletableFuture>
 
 ```java
-//대규모 비동기 작업을 효율적으로 처리하고, 스레드 관리까지 최적화 가능 (스레드 재사용 + 큐 관리로 성능·안정성 확보 + 비동기 작업 체이닝, 병렬 조합, 예외 처리 가능)
+//대규모 비동기 작업을 효율적으로 처리하고, 스레드 관리까지 최적화 가능 (스레드 재사용 + 큐 관리로 성능·안정성 확보
+// + 비동기 작업 체이닝, 병렬 조합, 예외 처리 가능)
 ExecutorService pool = Executors.newFixedThreadPool(4);
 
 CompletableFuture<String> api1 = CompletableFuture.supplyAsync(() -> callApi("API1"), pool);
