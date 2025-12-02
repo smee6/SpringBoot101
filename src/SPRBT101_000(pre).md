@@ -20,6 +20,7 @@ class SharedData {
         System.out.println("Flag changed!");
     }
 }
+
 원인: CPU 캐시와 JMM의 메모리 가시성 규칙
 Thread-1이 flag를 변경해도 Thread-2의 CPU 캐시에 이전 값이 남아있을 수 있음
 Heap의 최신 값이 즉시 반영되지 않음
@@ -131,7 +132,7 @@ Task 4 실행 by pool-1-thread-1
 Task 5 실행 by pool-1-thread-2
 ```
 
-# 스레드 풀
+# ThreadPool 스레드 풀
 매번 new Thread()로 스레드를 만들면 생성 비용과 GC 부담이 크기 때문에, 스레드를 재사용하는 방식으로 성능을 최적화
 1. 애플리케이션 시작 시 N개의 스레드를 미리 생성
 2. 작업(Runnable/Callable)을 큐에 넣음
@@ -139,8 +140,18 @@ Task 5 실행 by pool-1-thread-2
 4. 작업 완료 후 스레드는 다시 풀로 돌아감
 5. 애플리케이션 종료 시 모든 스레드 종료
 
+### ThreadPoolExecutor 라는게 있다!
+ThreadPoolExecutor  
+ ├─ corePoolSize       : 기본 유지 스레드 수  
+ ├─ maximumPoolSize    : 최대 스레드 수  
+ ├─ keepAliveTime      : 유휴 스레드 유지 시간  
+ ├─ workQueue          : 작업 대기 큐  
+ ├─ threadFactory      : 스레드 생성 전략  
+ ├─ handler            : 작업 거부 정책 (RejectedExecutionHandler)  
+
 ```java
 // Executor와 유사 코드
+// ! Executors.newFixedThreadPool(), newCachedThreadPool() 등은 사실 내부적으로 ThreadPoolExecutor를 생성
 Executors.newFixedThreadPool(n) → 고정 개수
 Executors.newCachedThreadPool() → 필요 시 스레드 생성, 유휴 시 제거
 Executors.newSingleThreadExecutor() → 단일 스레드
@@ -177,15 +188,28 @@ Task 5 실행 by pool-1-thread-2
 
 # CompletableFuture
 - 비동기 작업을 처리하고, 그 결과를 조합하거나 후속 작업을 연결할 수 있는 클래스  
-- Java 8에서 도입되었으며, Future의 한계를 개선  
+- Java 8에서 도입되었으며, Future의 한계를 개선
+- .supplyAsync() 이걸로 일단 비동기 작업을 시작
 
-<기존 Future의 한계>
+### Call back cahin method가 있음
+```java
+각 콜백은 새로운 CompletableFuture를 반환
+이전 단계가 완료되면 다음 단계 실행
+```
+.thenApply(fn) → 결과 변환  
+.thenAccept(fn) → 결과 소비  
+.thenRun(fn) → 결과 사용 안 하고 실행  
+.thenCombine(cf, fn) → 두 Future 결과 합치기  
+.allOf(cf...) → 여러 Future 모두 완료 시 실행  
+.exceptionally(fn) → 예외 처리  
+
+### <기존 Future의 한계>
 ```java
 Future<String> future = executor.submit(() -> "Hello");
 String result = future.get(); // 블로킹 (결과 나올 때까지 기다림) 스레드가 블로킹됨
 ```
 
-<CompletableFuture>
+### 그런데 <CompletableFuture> 에선 다르다!
 
 ```java
 CompletableFuture의 장점
@@ -211,7 +235,8 @@ public class CompletableFutureExample {
 
         System.out.println("메인 스레드 계속 실행");
     }
-}  
+}
+
 출력 예시
 메인 스레드 계속 실행
 비동기 작업 실행: ForkJoinPool.commonPool-worker-1
@@ -219,9 +244,10 @@ Hello World
 ➡ 메인 스레드가 블로킹 없이 계속 실행됨
 ```
 
-<ThreadPool + CompletableFuture>
+### 하나 더 <ThreadPool + CompletableFuture>
 
 ```java
+//대규모 비동기 작업을 효율적으로 처리하고, 스레드 관리까지 최적화 가능 (스레드 재사용 + 큐 관리로 성능·안정성 확보 + 비동기 작업 체이닝, 병렬 조합, 예외 처리 가능)
 ExecutorService pool = Executors.newFixedThreadPool(4);
 
 CompletableFuture<String> api1 = CompletableFuture.supplyAsync(() -> callApi("API1"), pool);
