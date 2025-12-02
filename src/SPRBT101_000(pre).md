@@ -5,7 +5,7 @@ Java 프로그램이 실행되면 JVM은 크게 Heap과 Stack 메모리 영역�
 
 ### 멀티 스레딩환경에서 Visibility(가시성) — Java Memory Model(JMM)
 - 멀티스레드 환경에서 Visibility는 "한 스레드가 변경한 값이 다른 스레드에서 언제 보이는가"를 의미
-```
+```java
 class SharedData {
     boolean flag = false;
 
@@ -31,7 +31,7 @@ JVM은 스레드별로 변수 값을 CPU 캐시 또는 레지스터에 저장할
 Visibility 문제는 동시성 버그의 주요 원인
 ```
 ### Visibility 이슈의 해결방법
-```
+```java
 //1. volatile 키워드
 //변수 읽기/쓰기 시 메인 메모리와 동기화
 //모든 스레드가 항상 최신 값을 읽음
@@ -48,7 +48,7 @@ synchronized void reader() { while (!flag) {} }
 AtomicInteger, ConcurrentHashMap 등은 가시성과 원자성을 모두 보장
 ```
 - 실무예시
-```
+```java
 class TaskRunner {
     private volatile boolean running = true;
 
@@ -70,7 +70,7 @@ class TaskRunner {
 # Excutor
 - 인터페이스임. (public interface Executor ...)
 - 스레드 실행을 직접 제어하지 않고, 작업 실행을 위임하기 위한 역할
-```
+```java
 public interface Executor {
     void execute(Runnable command);
 }
@@ -82,7 +82,7 @@ public interface Executor {
 ### Executor 구현체
 - Java에서는 Executor 인터페이스 기반으로 여러가지 구현체를 만들어 뒀음
 - ExecutorService
-```
+```java
 ExecutorService executor = Executors.newFixedThreadPool(5);
 
 executor.execute(() -> {
@@ -92,7 +92,7 @@ executor.execute(() -> {
 executor.shutdown();
 ```
 - ScheduledExecutorService
-```
+```java
 ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
 scheduler.schedule(() -> {
@@ -105,7 +105,7 @@ scheduler.schedule(() -> {
 Executor → 스레드 풀에서 빈 스레드 선택 → 작업 실행  
 Executor → 스레드 재사용, 개수 관리, 종료 처리  
 
-```
+```java
 import java.util.concurrent.*;
 
 public class ExecutorExample {
@@ -139,7 +139,7 @@ Task 5 실행 by pool-1-thread-2
 4. 작업 완료 후 스레드는 다시 풀로 돌아감
 5. 애플리케이션 종료 시 모든 스레드 종료
 
-```
+```java
 // Executor와 유사 코드
 Executors.newFixedThreadPool(n) → 고정 개수
 Executors.newCachedThreadPool() → 필요 시 스레드 생성, 유휴 시 제거
@@ -180,14 +180,14 @@ Task 5 실행 by pool-1-thread-2
 - Java 8에서 도입되었으며, Future의 한계를 개선  
 
 <기존 Future의 한계>
-```
+```java
 Future<String> future = executor.submit(() -> "Hello");
 String result = future.get(); // 블로킹 (결과 나올 때까지 기다림) 스레드가 블로킹됨
 ```
 
 <CompletableFuture>
 
-```
+```java
 CompletableFuture의 장점
   
 논블로킹: 결과가 준비되면 콜백 실행
@@ -221,7 +221,7 @@ Hello World
 
 <ThreadPool + CompletableFuture>
 
-```
+```java
 ExecutorService pool = Executors.newFixedThreadPool(4);
 
 CompletableFuture<String> api1 = CompletableFuture.supplyAsync(() -> callApi("API1"), pool);
