@@ -2,12 +2,30 @@
 - 메소드 호출되면 별도 쓰레드에서 실행되어서 호출 즉시 값 반환하는 방식
 - 응답속도, 병렬처리, 리소스 효율 등
 
-## 스프링 부트에서는 
+## 스프링 부트에서는... 비동기 처리를 어떻게 한다고?
 - Spring Boot는 비동기 처리를 AOP 기반 프록시로 @Async 메서드를 감싸서 ThreadPoolTaskExecutor에 제출하는 형식으로 처리
+- AOP는 핵심 로직과 부가 기능을 분리해서 관리하는 프로그래밍 패러다임을 말하고 Spring AOP라는게 그냥 Boot에 있다 생각하면 됨
 1. 클라이언트 → Controller → Service 메서드 호출
 2. @Async 붙은 메서드 → 프록시가 감지
 3. 지정된 Executor(쓰레드풀)에 작업 제출
 4. 메인 쓰레드는 즉시 반환, 작업은 별도 쓰레드에서 실행
+
+#### 프록시...? 가기전에 잠깐, Proxy가 뭔데
+- 프록시: 원래 객체(Real Object)를 대신해서 동작하는 대리 객체
+1. 접근 제어 (원래 객체 접근 전/후에 로직 추가)
+2. 부가 기능 추가 (로깅, 트랜잭션, 보안 등)
+3. 지연 로딩 (필요할 때만 실제 객체 생성)
+
+#### Proxy 프록시를 만드는 이유와 생성 방식
+- @EnableAsync, @Transactional 모두 내부적으로 Spring AOP를 사용 → 프록시 생성
+```text
+@Transactional, @Async, @Cacheable 등은 메서드 실행 전/후에 부가 기능을 넣어야 함
+원래 객체를 직접 수정하지 않고, 프록시 객체를 만들어서 부가 기능을 추가
+```
+1. 메서드 호출 가로채기
+2. 부가 기능 실행 (트랜잭션 시작, 쓰레드풀 제출 등)
+3. 원래 메서드 실행
+4. 후처리 (커밋, 롤백, 결과 반환)
 
 ### @EnableAsync ... 무슨 말이냐면 코드로 보자
 - 먼저 @EnableAsync로 Spring의 비동기 메서드 실행 기능 활성화 함. 이거 그냥 @Configuration 클래스 같은거
@@ -64,6 +82,7 @@ public void processImage() { ... }
 
 ### @Async
 - 거기에다가 아래처럼 @Async 하는거
+- 프록시가 메서드 호출을 가로채서 ThreadPoolTaskExecutor에 작업을 제출
 - @Async는 순서 보장 안 함 → 순서 필요한 경우 CompletableFuture 조합 또는 메시지 큐 사용
 - 이건 아마 @Service, @Component 등의 메서드 에서 구현되어 있겠
 ```java
@@ -78,6 +97,21 @@ public class NotificationService {
 ```
 - 아까 즉시 반환 한다고 그랬는데 void → fire-and-forget
 - Future<T> / CompletableFuture<T> → 결과를 비동기로 받음 -> 일단 Future를 뱉는다
+
+### 비동기 작업 취소와 체이닝
+#### 작업취소
+```java
+Future<?> future = executor.submit(() -> heavyTask());
+future.cancel(true); // 인터럽트 기반 취소
+```
+#### 체이닝
+- 결국은 Chaining 해서 지들끼리는 순서를 보장할때도 있음
+```java
+CompletableFuture.supplyAsync(() -> step1())
+    .thenApply(result -> step2(result))
+    .thenAccept(finalResult -> log.info("Done"));
+```
+- 사실은 @Async 대신 Kafka, RabbitMQ 등 메시지 큐로 비동기 처리 → 더 안정적, 재시도 가능
 
 ### Public 메서드로 꼭 만들어야 한다
 - Spring의 @Async는 프록시 기반 → 프록시는 인터페이스 또는 클래스의 public 메서드만 감쌈
@@ -110,4 +144,122 @@ public class AsyncConfig implements AsyncConfigurer {
 
 ### 비동기 많이 쓰는 환경에서는 쓰레드풀 모니터링이 필수적임
 - Actuator, JMX, Micrometer로 pool size, active count 확인
-- 왜냐면 QueueCapacity 초과 시 → 쓰레드풀 정책에 따라 예외 발생 또는 호출 쓰레드에서 실행 될 수도 있
+- 왜냐면 QueueCapacity 초과 시 → 쓰레드풀 정책에 따라 예외 발생 또는 호출 쓰레드에서 실행 될 수도 있다
+
+# 트랜잭션(@Transactional)
+- 데이터베이스 작업의 **원자성(Atomicity)** 을 보장하는 단위
+- 모두가 잘 알고 있는 그 ACID 그거 중요함 그거임 
+1. 원자성: 모두 성공하거나 모두 실패
+2. 일관성: 데이터 무결성 유지
+3. 격리성: 동시에 실행되는 트랜잭션 간 간섭 방지
+4. 지속성: 커밋된 데이터는 영구 저장
+
+### Spring에서 @Transactional 역시 프록시 기반으로 동작:
+- 프록시가 메서드 호출을 가로채서 트랜잭션 시작
+- 정상 종료 시 커밋, 예외 발생 시 롤백
+```java
+@Service
+public class UserService {
+    @Transactional
+    public void createUser(User user) {
+        userRepository.save(user);
+    }
+}
+```
+- @Async와 @Transactional은 둘 다 프록시 기반임
+- 그러다보니 @Async와 @Transactional을 같은 메서드에 붙이면 순서 제어 어려움
+- 프록시가 중첩되면 적용 순서에 따라 동작이 달라짐:
+- @Async가 먼저 → 비동기 쓰레드에서 실행, 호출자 트랜잭션과 분리
+- @Transactional이 먼저 → 호출자 쓰레드에서 트랜잭션 시작, 비동기 넘어가면 끊김
+
+### @Async와 @Transactional 중첩시 발생할 수 있는 사례
+```java
+@Service
+public class MyService {
+    @Async
+    public void asyncMethod() { ... }
+
+    public void normalMethod() {
+        asyncMethod(); // ! XXXX!!! 프록시 안 거침 → 그냥 자기 메서드 호출
+    }
+}
+// 프록시는 스프링 컨테이너가 관리하는 Bean을 감싸서 동작
+// 같은 클래스 내부 호출은 프록시를 거치지 않음 → 부가 기능 적용 안 됨
+```
+만약 이렇게 되어서 프록시를 안거치게 되면 각각 어노테이션들은 동작을 이상하게 할 것
+- @Async → 그냥 동기 실행 // @Transactional → 트랜잭션 시작 안 함
+
+### 프록시 기반으로 해서 비동기 + 트랜잭션을 합쳐서 쓰는 예제 (1)
+```java
+@Service
+public class OrderService {
+    @Transactional
+    public void placeOrder(Order order) {
+        orderRepository.save(order);
+        asyncService.sendConfirmation(order.getId());
+        //이미 AsyncService를 DI container에서 new 해서 만들어 뒀으니 이렇게 그냥 쓰기만 하면 됨
+    }
+}
+
+@Service
+public class AsyncService {
+    @Async
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendConfirmation(Long orderId) {
+        // 별도 트랜잭션에서 이메일 발송 기록 저장
+    }
+}
+/// 
+```
+
+### 프록시 기반으로 해서 비동기 + 트랜잭션을 합쳐서 쓰는 예제- 트랙션 전파 (2)
+```java
+// 예시 코드 1
+@Async
+@Transactional(propagation = Propagation.REQUIRES_NEW)
+public void asyncTask() {
+    // 새로운 트랜잭션 시작
+    // DB 작업 수행
+    // 커밋 또는 롤백
+}
+
+// 예시 코드 2
+@Service
+public class OrderService {
+    @Transactional
+    public void placeOrder(Order order) {
+        orderRepository.save(order);
+        asyncService.sendConfirmation(order.getId()); // 비동기 + 별도 트랜잭션
+    }
+}
+
+@Service
+public class AsyncService {
+    @Async
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendConfirmation(Long orderId) {
+        notificationRepository.save(new Notification(orderId, "Order placed"));
+        emailClient.sendEmail(orderId);
+    }
+}
+//➡ 주문 트랜잭션이 실패해도 알림 발송은 성공 가능
+
+// 예시 코드 3
+dataList.forEach(data -> asyncService.processData(data));
+
+@Async
+@Transactional(propagation = Propagation.REQUIRES_NEW)
+public void processData(Data data) {
+    dataRepository.save(data);
+}
+// ➡ 각 데이터는 독립적으로 커밋 → 하나 실패해도 나머지 영향 없음
+```
+1. 호출자 쓰레드 → @Async 프록시 → Executor에 작업 제출
+2. 작업 쓰레드 시작
+3. @Transactional(REQUIRES_NEW) 프록시 → 새로운 트랜잭션 시작
+4. 메서드 실행
+5. 정상 종료 → 커밋 / 예외 발생 → 롤백
+6. 호출자 트랜잭션과 완전히 독립
+
+- 이게 무조건 옳은건 아니고 메인 로직 실패해도 반드시 처리해야 하는 작업에만 한정적으로 쓰면 좋을 듯
+- 남발하면 트랜잭션 관리가 복잡해지고 성능 저하,DB 락 경합
