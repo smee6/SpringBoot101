@@ -297,3 +297,39 @@ public User createUser(@RequestBody User user) {
 // ➡ User 객체로 자동 변환
 // 대규모 API에서는 DTO(Data Transfer Object)로 받는 것이 안전
 ```
+### 잠깐만? 자동으로 객체 변환?
+- 내부적으로는 이런게 되는거랑 비슷한데 스프링이 자동으로 해줌
+```java
+ObjectMapper mapper = new ObjectMapper();
+User user = mapper.readValue(jsonString, User.class);
+```
+- Spring Boot에서는 이 변환 과정을 HttpMessageConverter가 담당
+- 기본적으로 Jackson 라이브러리가 포함되어 있어서, JSON ↔ Java 객체 변환이 자동
+- 그래서 가능하면 아래처럼 DTO랑 같이 쓰면 좋다
+```java
+// DTO 클래스
+public class CreateUserRequest {
+    @NotNull
+    private String name;
+
+    @Email
+    private String email;
+
+    // Getter/Setter....도 있다고 치고
+}
+
+// Controller
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    @PostMapping
+    public User createUser(@RequestBody CreateUserRequest request) {
+        // DTO → Entity 변환
+        User user = new User(request.getName(), request.getEmail());
+
+        // DB 저장 로직...
+        return user;
+    }
+}
+```
