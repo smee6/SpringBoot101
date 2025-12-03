@@ -267,6 +267,37 @@ pool.shutdown();
 
 //API 병렬 호출 후 결과 합치기
 ```
+## 자바 패키지 구조와 계층
+- 스프링은 좀 이런식으로 쓰는듯
+com.example.project  
+ ├─ controller   → 요청 처리 (API 엔드포인트)  
+ ├─ service      → 비즈니스 로직  
+ ├─ repository   → DB 접근  
+ ├─ model        → 엔티티/DTO  
+ └─ config       → 설정 클래스  
 
+### 패키지 선언 (package)
+- Java 클래스 파일의 첫 줄에 package를 선언해서 클래스가 속한 네임스페이스를 지정
+- 패키지 이름은 회사 도메인 역순 + 프로젝트명 + 역할 ... 로 주로 만들긴 함 (예: com.mycompany.myapp.service)
+```java
+package com.example.project.service;
 
-   
+public class UserService { ... }
+//➡ com.example.project.service라는 폴더 구조에 이 클래스가 위치해야 함
+```
+- Java는 패키지 = 폴더 구조
+- package 선언은 클래스의 고유 주소 역할을 함
+- 같은 이름의 클래스라도 패키지가 다르면 구분 가능
+
+### 그래서 패키지가 다르면 import해서 불러와야 함
+```java
+import com.example.project.model.User;
+
+public class UserService {
+    private User user;
+}
+//➡ User 클래스가 다른 패키지에 있으므로 import 필요
+```
+- 같은 패키지에 있는 클래스는 import 없이 사용 가능
+- java.lang 패키지(예: String, Integer)는 자동 import
+- import java.util.*; → 해당 패키지의 모든 클래스 import (권장 X, 필요한 것만 import)
