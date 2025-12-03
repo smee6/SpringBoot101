@@ -1,7 +1,7 @@
 # Spring Boot 101 (스프링 부트 101)
 
 <p align="center">
-  <img src="https://spring.io/images/projects/spring-boot-7f2e24fb962501672cc91ccd285ed2ba.svg" alt="Spring Boot" width="200"/>
+  <img src="https://spring.io/img/projects/spring-boot.svg" alt="Spring Boot" width="200"/>
 </p>
 
 ### 목적
