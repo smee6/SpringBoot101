@@ -2,7 +2,10 @@
 
 <p align="center">
   <img src="https://spring.io/img/projects/spring-boot.svg" alt="Spring Boot" width="200"/>
+  <img src="https://spring.io/img/logos/spring-initializr.svg" alt="Spring Boot" width="200"/>
 </p>
+
+
 
 ### 목적
 - 스프링 부트를 진짜 진득하게 파보자
