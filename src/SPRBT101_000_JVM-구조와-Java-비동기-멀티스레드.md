@@ -209,7 +209,7 @@ Future<String> future = executor.submit(() -> "Hello");
 String result = future.get(); // 블로킹 (결과 나올 때까지 기다림) 스레드가 블로킹됨
 ```
 
-### 그런데 <CompletableFuture> 에선 다르다!
+### 그런데 CompletableFuture 에선 다르다!
 
 ```java
 CompletableFuture의 장점
