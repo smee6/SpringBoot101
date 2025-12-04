@@ -1,8 +1,8 @@
 # Spring Boot 101 (스프링 부트 101)
 
 <p align="center">
-  <img src="https://spring.io/img/projects/spring-boot.svg" alt="Spring Boot" width="200"/>
-  <img src="https://spring.io/img/logos/spring-initializr.svg" alt="Spring Boot" width="200"/>
+  <img src="https://spring.io/img/projects/spring-boot.svg" alt="Spring Boot" width="100"/>
+  <img src="https://spring.io/img/logos/spring-initializr.svg" alt="Spring Boot" width="100"/>
 </p>
 
 
